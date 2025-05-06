@@ -11,10 +11,10 @@
         
         <form action="/edit/{{table_key}}/{{row[0]}}" method="post">
             % for i, field in enumerate(fields[1:], 1):
-                <div class="form-group">
+                    <div class="form-group">
                     <label for="{{field}}">{{TABLES[table_key]['field_names'][field]}}</label>
                     <input type="text" name="{{field}}" id="{{field}}" value="{{row[i]}}" required>
-                </div>
+                    </div>
             % end
             <button type="submit" class="button">Сохранить</button>
         </form>

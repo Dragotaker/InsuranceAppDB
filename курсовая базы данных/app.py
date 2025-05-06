@@ -311,41 +311,60 @@ TABLES = {
 
 # Просмотр таблицы
 @route('/table/<table_name>')
-def view_table(table_name):
+def show_table(table_name):
     if table_name not in TABLES:
         return "Таблица не найдена"
     
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Устанавливаем кодировку для текущей сессии
+    # Get search parameters and ensure proper encoding
+    search_query = request.query.get('search', '').strip()
+    search_field = request.query.get('search_field', '')
+    
+    # Ensure proper UTF-8 encoding for search query
+    if search_query:
+        try:
+            # Try to decode as UTF-8 first
+            search_query = search_query.encode('latin1').decode('utf-8')
+        except:
+            try:
+                # If that fails, try CP1251
+                search_query = search_query.encode('latin1').decode('cp1251')
+            except:
+                # If all fails, leave as is
+                pass
+    
+    # Base query
+    query = f"SELECT * FROM insurance.{table_name}"
+    params = []
+    
+    # Add search conditions if search query is provided
+    if search_query:
+        if search_field:
+            # Search in specific field
+            query += f" WHERE {search_field}::text ILIKE %s"
+            params.append(f'%{search_query}%')
+        else:
+            # Search in all fields
+            conditions = []
+            for field in TABLES[table_name]['fields']:
+                conditions.append(f"{field}::text ILIKE %s")
+                params.append(f'%{search_query}%')
+            query += " WHERE " + " OR ".join(conditions)
+    
+    # Add ORDER BY clause
+    query += f" ORDER BY {TABLES[table_name]['fields'][0]}"
+    
+    # Set client encoding for this session
     cur.execute("SET client_encoding TO 'UTF8'")
     
-    # Получаем данные
-    cur.execute(f"SELECT * FROM insurance.{table_name}")
+    cur.execute(query, params)
     rows = cur.fetchall()
     
-    # Преобразуем строки в словари для удобства работы в шаблоне
-    table_data = []
-    for row in rows:
-        row_dict = {}
-        for i, field in enumerate(TABLES[table_name]['fields']):
-            value = row[i]
-            # Если значение - строка, пробуем декодировать
-            if isinstance(value, str):
-                try:
-                    # Пробуем разные варианты декодирования
-                    try:
-                        value = value.encode('latin1').decode('utf-8')
-                    except:
-                        try:
-                            value = value.encode('cp1251').decode('utf-8')
-                        except:
-                            pass
-                except:
-                    pass
-            row_dict[field] = value
-        table_data.append(row_dict)
+    # Convert rows to dictionaries for easier access
+    field_names = TABLES[table_name]['fields']
+    rows = [dict(zip(field_names, row)) for row in rows]
     
     cur.close()
     conn.close()
@@ -355,10 +374,12 @@ def view_table(table_name):
                    current_page=table_name,
                    base=template('templates/table.tpl',
                                 table_name=TABLES[table_name]['name'],
-                                fields=TABLES[table_name]['fields'],
-                                rows=table_data,
+                                fields=field_names,
+                                rows=rows,
                                 table_key=table_name,
-                                table_info=TABLES[table_name]))
+                                table_info=TABLES[table_name],
+                                search_query=search_query,
+                                search_field=search_field))
 
 # Добавление записи
 @route('/add/<table_name>', method=['GET', 'POST'])

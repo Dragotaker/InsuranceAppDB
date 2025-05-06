@@ -17,19 +17,20 @@
         
         <form action="/add/{{table_key}}" method="post">
             % for field in fields[1:]:
-                <div class="form-group">
-                    <label for="{{field}}">{{TABLES[table_key]['field_names'][field]}}</label>
-                    % if field in foreign_data:
-                        <select name="{{field}}" id="{{field}}">
-                            <option value="">-- Выберите --</option>
-                            % for value, display in foreign_data[field]:
-                                <option value="{{value}}">{{display}}</option>
-                            % end
-                        </select>
-                    % else:
-                        <input type="text" name="{{field}}" id="{{field}}" required>
-                    % end
-                </div>
+            <div class="form-group">
+                <label for="{{field}}">{{TABLES[table_key]['field_names'][field]}}</label>
+                % if 'date' in field:
+                    <input type="date" name="{{field}}" id="{{field}}" required>
+                % elif 'email' in field:
+                    <input type="email" name="{{field}}" id="{{field}}" required placeholder="example@mail.com">
+                % elif 'phone' in field:
+                    <input type="tel" name="{{field}}" id="{{field}}" required pattern="[+0-9 ()-]{7,}" placeholder="+7 (___) ___-__-__">
+                % elif 'passport' in field:
+                    <input type="text" name="{{field}}" id="{{field}}" required pattern="[A-Za-z0-9]{6,20}" placeholder="Серия и номер">
+                % else:
+                    <input type="text" name="{{field}}" id="{{field}}" required>
+                % end
+            </div>
             % end
             <button type="submit" class="button">Сохранить</button>
         </form>
