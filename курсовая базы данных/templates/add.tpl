@@ -15,43 +15,23 @@
         </div>
         % end
         
-        <form method="post">
-            % for field in fields:
-            % if field == fields[0]:  # Пропускаем первое поле (ID)
-                <input type="hidden" name="{{field}}" value="1">  <!-- Значение не важно, так как будет автоинкремент -->
-            % elif not field.endswith('_id'):
-            <div class="form-group">
-                <label for="{{field}}">{{TABLES[table_key]['display_fields'][field]}}:</label>
-                % if field in ['birth_date', 'hire_date', 'start_date', 'end_date', 'claim_date', 'payment_date', 'event_date']:
-                <input type="date" id="{{field}}" name="{{field}}" required>
-                % elif field == 'password_hash':
-                <input type="password" id="{{field}}" name="{{field}}" required>
-                % else:
-                <input type="text" id="{{field}}" name="{{field}}" required>
-                % end
-            </div>
-            % elif field in foreign_data and table_key != 'users':
-            <div class="form-group">
-                <label for="{{field}}">{{TABLES[table_key]['display_fields'][field]}}:</label>
-                <select id="{{field}}" name="{{field}}">
-                    <option value="">-- Выберите --</option>
-                    % for id, name in foreign_data[field]:
-                    <option value="{{id}}">{{name}}</option>
+        <form action="/add/{{table_key}}" method="post">
+            % for field in fields[1:]:
+                <div class="form-group">
+                    <label for="{{field}}">{{TABLES[table_key]['field_names'][field]}}</label>
+                    % if field in foreign_data:
+                        <select name="{{field}}" id="{{field}}">
+                            <option value="">-- Выберите --</option>
+                            % for value, display in foreign_data[field]:
+                                <option value="{{value}}">{{display}}</option>
+                            % end
+                        </select>
+                    % else:
+                        <input type="text" name="{{field}}" id="{{field}}" required>
                     % end
-                </select>
-            </div>
-            % elif field.endswith('_id'):
-            <div class="form-group">
-                <label for="{{field}}">{{TABLES[table_key]['display_fields'][field]}}:</label>
-                % if table_key == 'users' and field in ['client_id', 'employee_id']:
-                <input type="number" id="{{field}}" name="{{field}}" min="1">
-                % else:
-                <input type="number" id="{{field}}" name="{{field}}" min="1" required>
-                % end
-            </div>
+                </div>
             % end
-            % end
-            <button type="submit" class="button">Добавить</button>
+            <button type="submit" class="button">Сохранить</button>
         </form>
     </div>
 </body>

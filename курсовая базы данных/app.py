@@ -1,5 +1,5 @@
 from bottle import route, run, template, request, redirect, static_file
-import pg8000
+import psycopg2
 import os
 from dotenv import load_dotenv
 
@@ -12,11 +12,40 @@ DB_CONFIG = {
     'user': os.getenv('DB_USER', 'postgres'),
     'password': os.getenv('DB_PASSWORD', 'drago'),
     'host': os.getenv('DB_HOST', 'localhost'),
-    'port': int(os.getenv('DB_PORT', '5432'))
+    'port': int(os.getenv('DB_PORT', '5432')),
+    'client_encoding': 'UTF8',
+    'options': '-c client_encoding=UTF8'
 }
 
 def get_db_connection():
-    return pg8000.connect(**DB_CONFIG)
+    conn = psycopg2.connect(**DB_CONFIG)
+    # Устанавливаем кодировку UTF-8 для соединения
+    conn.set_client_encoding('UTF8')
+    # Устанавливаем кодировку для текущей сессии
+    cur = conn.cursor()
+    cur.execute("SET client_encoding TO 'UTF8'")
+    cur.close()
+    return conn
+
+def ensure_utf8(text):
+    if isinstance(text, str):
+        try:
+            # Пробуем декодировать как UTF-8
+            text.encode('utf-8')
+            return text
+        except UnicodeEncodeError:
+            # Если не получилось, пробуем разные варианты декодирования
+            try:
+                # Пробуем как CP1251
+                return text.encode('cp1251').decode('utf-8')
+            except:
+                try:
+                    # Пробуем как LATIN1
+                    return text.encode('latin1').decode('utf-8')
+                except:
+                    # Если ничего не помогло, возвращаем как есть
+                    return text
+    return text
 
 # Статические файлы
 @route('/static/<filename:path>')
@@ -288,18 +317,38 @@ def view_table(table_name):
     
     conn = get_db_connection()
     cur = conn.cursor()
+    
+    # Устанавливаем кодировку для текущей сессии
+    cur.execute("SET client_encoding TO 'UTF8'")
+    
+    # Получаем данные
     cur.execute(f"SELECT * FROM insurance.{table_name}")
     rows = cur.fetchall()
-    cur.close()
-    conn.close()
     
     # Преобразуем строки в словари для удобства работы в шаблоне
     table_data = []
     for row in rows:
         row_dict = {}
         for i, field in enumerate(TABLES[table_name]['fields']):
-            row_dict[field] = row[i]
+            value = row[i]
+            # Если значение - строка, пробуем декодировать
+            if isinstance(value, str):
+                try:
+                    # Пробуем разные варианты декодирования
+                    try:
+                        value = value.encode('latin1').decode('utf-8')
+                    except:
+                        try:
+                            value = value.encode('cp1251').decode('utf-8')
+                        except:
+                            pass
+                except:
+                    pass
+            row_dict[field] = value
         table_data.append(row_dict)
+    
+    cur.close()
+    conn.close()
     
     return template('templates/layout.tpl',
                    title=TABLES[table_name]['name'],
@@ -321,84 +370,12 @@ def add_record(table_name):
         conn = get_db_connection()
         cur = conn.cursor()
         
+        # Устанавливаем кодировку для текущей сессии
+        cur.execute("SET client_encoding TO 'UTF8'")
+        
         fields = TABLES[table_name]['fields']
         values = []
         field_names = []
-        
-        # Проверяем существование связанных записей
-        if table_name == 'users':
-            client_id = request.forms.get('client_id')
-            employee_id = request.forms.get('employee_id')
-            role_id = request.forms.get('role_id')
-            
-            # Проверяем существование роли
-            if role_id:
-                cur.execute("SELECT COUNT(*) FROM insurance.roles WHERE role_id = %s", (role_id,))
-                if cur.fetchone()[0] == 0:
-                    # Получаем данные для выпадающих списков
-                    foreign_data = {}
-                    if 'foreign_keys' in TABLES[table_name]:
-                        for field, fk_info in TABLES[table_name]['foreign_keys'].items():
-                            cur.execute(f"SELECT {field}, {fk_info['display_field']} FROM insurance.{fk_info['table']}")
-                            foreign_data[field] = cur.fetchall()
-                    cur.close()
-                    conn.close()
-                    return template('templates/layout.tpl',
-                                  title=TABLES[table_name]['add_form_title'],
-                                  current_page=table_name,
-                                  base=template('templates/add.tpl',
-                                               table_name=TABLES[table_name]['name'],
-                                               fields=TABLES[table_name]['fields'],
-                                               table_key=table_name,
-                                               TABLES=TABLES,
-                                               foreign_data=foreign_data,
-                                               error="Указанная роль не существует"))
-            
-            # Проверяем существование клиента
-            if client_id:
-                cur.execute("SELECT COUNT(*) FROM insurance.clients WHERE client_id = %s", (client_id,))
-                if cur.fetchone()[0] == 0:
-                    # Получаем данные для выпадающих списков
-                    foreign_data = {}
-                    if 'foreign_keys' in TABLES[table_name]:
-                        for field, fk_info in TABLES[table_name]['foreign_keys'].items():
-                            cur.execute(f"SELECT {field}, {fk_info['display_field']} FROM insurance.{fk_info['table']}")
-                            foreign_data[field] = cur.fetchall()
-                    cur.close()
-                    conn.close()
-                    return template('templates/layout.tpl',
-                                  title=TABLES[table_name]['add_form_title'],
-                                  current_page=table_name,
-                                  base=template('templates/add.tpl',
-                                               table_name=TABLES[table_name]['name'],
-                                               fields=TABLES[table_name]['fields'],
-                                               table_key=table_name,
-                                               TABLES=TABLES,
-                                               foreign_data=foreign_data,
-                                               error="Указанный клиент не существует"))
-            
-            # Проверяем существование сотрудника
-            if employee_id:
-                cur.execute("SELECT COUNT(*) FROM insurance.employees WHERE employee_id = %s", (employee_id,))
-                if cur.fetchone()[0] == 0:
-                    # Получаем данные для выпадающих списков
-                    foreign_data = {}
-                    if 'foreign_keys' in TABLES[table_name]:
-                        for field, fk_info in TABLES[table_name]['foreign_keys'].items():
-                            cur.execute(f"SELECT {field}, {fk_info['display_field']} FROM insurance.{fk_info['table']}")
-                            foreign_data[field] = cur.fetchall()
-                    cur.close()
-                    conn.close()
-                    return template('templates/layout.tpl',
-                                  title=TABLES[table_name]['add_form_title'],
-                                  current_page=table_name,
-                                  base=template('templates/add.tpl',
-                                               table_name=TABLES[table_name]['name'],
-                                               fields=TABLES[table_name]['fields'],
-                                               table_key=table_name,
-                                               TABLES=TABLES,
-                                               foreign_data=foreign_data,
-                                               error="Указанный сотрудник не существует"))
         
         # Пропускаем первое поле (ID), так как оно будет автоинкрементироваться
         for field in fields[1:]:
@@ -406,7 +383,7 @@ def add_record(table_name):
                 values.append(hash_password(request.forms.get(field)))
                 field_names.append(field)
             else:
-                value = request.forms.get(field)
+                value = request.forms.getunicode(field)  # Получаем строку в unicode (UTF-8)
                 if value:  # Добавляем только если значение не пустое
                     values.append(value)
                     field_names.append(field)
@@ -465,8 +442,9 @@ def edit_record(table_name, id):
         for field in fields:
             if field.endswith('_id'):  # Пропускаем ID
                 continue
+            value = request.forms.getunicode(field)
             updates.append(f"{field} = %s")
-            values.append(request.forms.get(field))
+            values.append(value)
         
         values.append(id)  # Добавляем ID для WHERE условия
         query = f"UPDATE insurance.{table_name} SET {', '.join(updates)} WHERE {fields[0]} = %s"
@@ -500,7 +478,14 @@ def delete_record(table_name, id):
     
     conn = get_db_connection()
     cur = conn.cursor()
+    
+    # Удаляем запись
     cur.execute(f"DELETE FROM insurance.{table_name} WHERE {TABLES[table_name]['fields'][0]} = %s", (id,))
+    
+    # Сбрасываем последовательность
+    sequence_name = f"insurance.{table_name}_{TABLES[table_name]['fields'][0]}_seq"
+    cur.execute(f"SELECT setval(%s, COALESCE((SELECT MAX({TABLES[table_name]['fields'][0]}) FROM insurance.{table_name}), 0) + 1, false)", (sequence_name,))
+    
     conn.commit()
     cur.close()
     conn.close()

@@ -13,16 +13,18 @@
         <table>
             <thead>
                 <tr>
-                    % for field in fields:
+                    <th>№</th>
+                    % for field in fields[1:]:
                         <th>{{table_info['display_fields'][field]}}</th>
                     % end
                     <th>Действия</th>
                 </tr>
             </thead>
             <tbody>
-                % for row in rows:
+                % for idx, row in enumerate(rows, 1):
                     <tr>
-                        % for field in fields:
+                        <td>{{idx}}</td>
+                        % for field in fields[1:]:
                             <td>
                                 % if 'display_values' in table_info and field in table_info['display_values']:
                                     {{table_info['display_values'][field].get(row[field], row[field])}}

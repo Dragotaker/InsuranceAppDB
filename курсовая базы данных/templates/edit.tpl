@@ -9,16 +9,14 @@
     <div class="container">
         <h1>Редактировать запись в таблице "{{table_name}}"</h1>
         
-        <form method="POST" class="form">
-            % for i, field in enumerate(fields):
-                % if not field.endswith('_id'):
-                    <div class="form-group">
-                        <label for="{{field}}">{{field}}</label>
-                        <input type="text" id="{{field}}" name="{{field}}" value="{{row[i]}}" required>
-                    </div>
-                % end
+        <form action="/edit/{{table_key}}/{{row[0]}}" method="post">
+            % for i, field in enumerate(fields[1:], 1):
+                <div class="form-group">
+                    <label for="{{field}}">{{TABLES[table_key]['field_names'][field]}}</label>
+                    <input type="text" name="{{field}}" id="{{field}}" value="{{row[i]}}" required>
+                </div>
             % end
-            <button type="submit" class="btn">Сохранить</button>
+            <button type="submit" class="button">Сохранить</button>
         </form>
     </div>
 </body>
