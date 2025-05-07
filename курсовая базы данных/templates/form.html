@@ -8,6 +8,10 @@
     <div class="container">
         <h1>{{action}} {{table_info.name}}</h1>
         
+        % if error:
+        <div class="error">{{error}}</div>
+        % end
+        
         <form method="post">
             % for field in table_info['fields']:
             % if field != table_info['fields'][0] or not record:
@@ -15,6 +19,10 @@
                 <label for="{{field}}">{{table_info['display_fields'][field]}}:</label>
                 % if field in ['birth_date', 'hire_date', 'start_date', 'end_date']:
                 <input type="date" id="{{field}}" name="{{field}}" value="{{record[field] if record else ''}}" required>
+                % elif field == 'role_id' and table_name == 'users':
+                <input type="text" id="{{field}}" name="{{field}}" value="{{record[field] if record else ''}}" required placeholder="Введите название роли">
+                % elif field in ['client_id', 'employee_id'] and table_name == 'users':
+                <input type="text" id="{{field}}" name="{{field}}" value="{{record[field] if record else ''}}" placeholder="Можно оставить пустым">
                 % else:
                 <input type="text" id="{{field}}" name="{{field}}" value="{{record[field] if record else ''}}" required>
                 % end

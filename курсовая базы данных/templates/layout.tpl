@@ -13,6 +13,7 @@
         <nav>
             <ul>
                 <li><a href="/" class="{{'active' if current_page == 'home' else ''}}">Главная</a></li>
+                <li><a href="/reports" class="{{'active' if current_page == 'reports' else ''}}">Отчёты</a></li>
                 <li class="nav-header">Основные данные</li>
                 <li><a href="/table/clients" class="{{'active' if current_page == 'clients' else ''}}">Клиенты</a></li>
                 <li><a href="/table/employees" class="{{'active' if current_page == 'employees' else ''}}">Сотрудники</a></li>

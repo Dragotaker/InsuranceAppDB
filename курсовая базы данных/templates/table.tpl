@@ -18,7 +18,9 @@
 <body>
     <div class="container">
         <h1>{{table_name}}</h1>
-        <a href="/add/{{table_key}}" class="button">Добавить запись</a>
+        % if show_add_delete:
+            <a href="/add/{{table_key}}" class="button">Добавить запись</a>
+        % end
         
         <!-- Add search form -->
         <div class="search-container">
@@ -65,8 +67,10 @@
                         % end
                         <td>
                             <a href="/edit/{{table_key}}/{{row[fields[0]]}}" class="button">Редактировать</a>
-                            <a href="/delete/{{table_key}}/{{row[fields[0]]}}" class="button delete">Удалить</a>
-                            </td>
+                            % if show_add_delete:
+                                <a href="/delete/{{table_key}}/{{row[fields[0]]}}" class="button delete">Удалить</a>
+                            % end
+                        </td>
                         </tr>
                     % end
                 % else:

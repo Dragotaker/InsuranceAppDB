@@ -1,0 +1,101 @@
+Based on the provided database schema, here are some complex SQL queries for generating reports:
+
+    Отчет о количестве полисов по категориям и их общей страховой сумме:
+    Этот запрос объединяет таблицы category_insurances и insurance_policies для подсчета количества полисов в каждой категории и суммирования страховой суммы для каждой категории.
+    SQL
+
+SELECT
+    ci.category_name,
+    COUNT(ip.policy_id) AS total_policies,
+    SUM(ip.insurance_amount) AS total_insurance_amount
+FROM
+    insurance.category_insurances ci
+LEFT JOIN
+    insurance.insurance_policies ip ON ci.category_id = ip.category_id
+GROUP BY
+    ci.category_name
+ORDER BY
+    total_policies DESC;
+
+Отчет о клиентах с наибольшим количеством активных полисов и их контактной информацией:
+Этот запрос объединяет таблицы clients и insurance_policies, фильтрует по активным полисам и группирует по клиентам, чтобы найти клиентов с наибольшим количеством активных полисов.
+SQL
+
+SELECT
+    c.full_name,
+    c.phone_number,
+    c.email,
+    COUNT(ip.policy_id) AS active_policies_count
+FROM
+    insurance.clients c
+JOIN
+    insurance.insurance_policies ip ON c.client_id = ip.client_id
+WHERE
+    ip.status = 'active'
+GROUP BY
+    c.client_id, c.full_name, c.phone_number, c.email
+ORDER BY
+    active_policies_count DESC;
+
+Отчет о страховых случаях за период с указанием сумм выплат и статусов:
+Этот запрос объединяет таблицы insurance_claims, policy_events, insurance_policies и clients для получения детальной информации о страховых случаях за определенный период, включая клиента, номер полиса, запрошенную и утвержденную суммы, а также статус рассмотрения. Вам нужно будет указать начальную и конечную дату для <start_date> и <end_date>.
+SQL
+
+SELECT
+    ic.claim_number,
+    c.full_name AS client_name,
+    ip.policy_number,
+    ic.claim_date,
+    ic.description,
+    ic.requested_amount,
+    ic.approved_amount,
+    ic.status AS claim_status,
+    e.full_name AS processed_by_employee
+FROM
+    insurance.insurance_claims ic
+JOIN
+    insurance.policy_events pe ON ic.policy_event_id = pe.policy_event_id
+JOIN
+    insurance.insurance_policies ip ON pe.policy_id = ip.policy_id
+JOIN
+    insurance.clients c ON ip.client_id = c.client_id
+LEFT JOIN
+    insurance.employees e ON ic.processed_by = e.employee_id
+WHERE
+    ic.claim_date BETWEEN '<start_date>' AND '<end_date>';
+
+Отчет о платежах за определенный период с разбивкой по типу платежа и статусу:
+Этот запрос извлекает информацию о платежах за указанный период, показывая тип платежа, статус и общую сумму для каждого типа и статуса. Вам нужно будет указать начальную и конечную дату для <start_date> и <end_date>.
+SQL
+
+SELECT
+    payment_type,
+    status,
+    COUNT(payment_id) AS total_payments,
+    SUM(amount) AS total_amount
+FROM
+    insurance.payments
+WHERE
+    payment_date BETWEEN '<start_date>' AND '<end_date>'
+GROUP BY
+    payment_type, status
+ORDER BY
+    payment_type, status;
+
+Отчет о распределении страховых событий по категориям и их вероятности:
+Этот запрос объединяет таблицы insured_events и category_insurances для анализа распределения страховых событий по категориям страхования, включая описание события и его вероятность.
+SQL
+
+    SELECT
+        ci.category_name,
+        ie.event_name,
+        ie.description,
+        ie.probability
+    FROM
+        insurance.insured_events ie
+    JOIN
+        insurance.category_insurances ci ON ie.category_id = ci.category_id
+    ORDER BY
+        ci.category_name, ie.probability DESC;
+
+Эти запросы охватывают различные аспекты данных в вашей страховой базе данных и могут служить основой для создания отчетов. Вы можете модифицировать их, добавляя условия фильтрации, изменяя группировку или выбирая другие поля в зависимости от конкретных потребностей вашего отчета.
